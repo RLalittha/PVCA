@@ -3,64 +3,71 @@
 **Project:** PVCA (PayPal Visual Commerce Assistant)  
 **Package:** `com.pvca.app`  
 **Platform:** Android (Kotlin, Jetpack Compose, Material 3)  
-**Current Milestone:** Milestone 0 & Milestone 1 (Foundation + Photo Picker + ML Kit Image Labeling)
+**Current Milestone:** Milestone 2 (Real Object Detection, Bounding Boxes & Interactive Blue Dot)
 
 ---
 
-## Architecture Overview
+## Architecture Overview (Milestone 2)
 
 ```text
 com.pvca.app
-├── MainActivity.kt                # Application entry point (Edge-to-Edge ComponentActivity)
+├── MainActivity.kt                       # Application entry point (Edge-to-Edge ComponentActivity)
 ├── data/
 │   ├── model/
-│   │   ├── LabelItem.kt          # Domain model with confidence percentage conversion
-│   │   └── UiState.kt            # Sealed interface: Idle, Loading, Success, Empty, Error
+│   │   ├── DetectedObjectItem.kt        # Localized object model with bounding box & category
+│   │   ├── LabelItem.kt                 # Image-level label domain model with confidence %
+│   │   ├── AnalysisOutput.kt            # Aggregated output of dual visual analysis
+│   │   └── UiState.kt                   # Sealed interface: Idle, Loading, Success, Empty, Error
 │   └── analyzer/
-│       ├── ImageAnalyzer.kt      # Abstraction contract for visual intelligence
-│       └── MlKitImageAnalyzer.kt # Google ML Kit Image Labeling (On-Device, CPU-friendly)
+│       ├── ImageAnalyzer.kt             # Interface contract for image-level labeling
+│       ├── MlKitImageAnalyzer.kt        # ML Kit Image Labeling (On-Device, CPU-friendly)
+│       ├── MlKitObjectDetector.kt       # ML Kit Object Detection (Bounding boxes & categories)
+│       └── CombinedVisualAnalyzer.kt    # Concurrent coroutine coordinator for dual analysis
 └── ui/
-    ├── PvcaApp.kt                # Compose screen coordinating picker & sections
+    ├── PvcaApp.kt                       # Compose screen coordinating picker, overlay & results
     ├── components/
-    │   ├── PvcaHeader.kt         # Brand header ("PVCA: See it. Identify it. Shop it.")
-    │   ├── ImagePreviewSection.kt# Photo Picker trigger, image rendering & temp blue-dot placeholder
-    │   └── AnalysisResultsSection.kt # Modular states for label items & confidence progress bars
+    │   ├── PvcaHeader.kt                # Brand header ("PVCA: See it. Identify it. Shop it.")
+    │   ├── ImagePreviewSection.kt       # Image container with detection overlay & selected card
+    │   ├── DetectionBoundingBoxOverlay.kt # Bounding box renderer & interactive pulsing blue dots
+    │   ├── SelectedObjectCard.kt        # Info card displaying details for the active object
+    │   └── AnalysisResultsSection.kt    # Dual-tab layout (Detected Objects & Image Labels)
+    ├── util/
+    │   └── CoordinateTransformer.kt     # Exact aspect-ratio aware coordinate mapping (ContentScale.Fit)
     ├── viewmodel/
-    │   └── MainViewModel.kt      # Coroutine-powered StateFlow management
+    │   └── MainViewModel.kt             # StateFlow management with object selection support
     └── theme/
-        ├── Color.kt              # PayPal blue (#0070BA) & cyan accent palette
-        ├── Type.kt               # Clean typography definitions
-        └── Theme.kt              # Material 3 light/dark support
+        ├── Color.kt                     # PayPal blue (#0070BA) & cyan accent palette
+        ├── Type.kt                      # Clean typography definitions
+        └── Theme.kt                     # Material 3 light/dark support
 ```
 
 ---
 
-## Prerequisites for Building & Running
+## Key Milestone 2 Capabilities
 
-1. **Android Studio**: Install [Android Studio Ladybug or Koala](https://developer.android.com/studio).
-   - Android Studio automatically provides the required **Java 17 / 21 (JetBrains Runtime)** and Android SDK.
-2. **Android SDK**:
-   - Compile SDK: `34` (Android 14) or `35` (Android 15)
-   - Minimum SDK: `24` (Android 7.0 Nougat)
-   - Target SDK: `34`
-3. **Physical Device or Emulator**:
-   - Enable **USB Debugging** on your physical Android phone (Developer Options).
-   - Alternatively, create an Android Virtual Device (AVD) in Android Studio Device Manager.
+1. **Real Object Detection:**
+   * Uses Google ML Kit Object Detection & Tracking in static image mode (`com.google.mlkit:object-detection:17.0.2`).
+   * Bundled on-device model running locally on CPU.
+   * Extracts spatial bounding boxes in upright image pixel coordinates.
+
+2. **Accurate Coordinate Transformation:**
+   * [`CoordinateTransformer.kt`](file:///D:/PVCA/frontend/android/app/src/main/java/com/pvca/app/ui/util/CoordinateTransformer.kt) maps image pixel coordinates to screen display coordinates.
+   * Correctly accounts for aspect ratio, letterboxing, and pillarboxing when rendered with `ContentScale.Fit`.
+
+3. **Signature Interactive Blue Dot:**
+   * Replaced the centered placeholder with genuine coordinate-based indicators.
+   * Each detected object receives an animated pulsing glowing blue dot positioned at its bounding box center.
+   * Tapping a dot selects the object, highlights its bounding box, and displays a dedicated details card.
+
+4. **Preserved Day 1 Image Labeling:**
+   * General visual concepts and confidence percentages remain accessible via the "Image Labels" tab.
 
 ---
 
-## How to Open and Run in Android Studio
+## How to Build and Run in Android Studio
 
 1. Launch Android Studio.
 2. Select **Open** and choose the folder `D:\PVCA\frontend\android`.
-3. Wait for Gradle Sync to complete (Android Studio will automatically download Gradle 8.7, Android Gradle Plugin 8.5.2, and dependencies).
-4. Connect your Android phone with a USB cable (or start an emulator).
-5. Click the green **Run ▶** button in Android Studio.
-
----
-
-## Important Technical Limitations (Milestone 1)
-
-> **Clarification:** Google ML Kit Image Labeling provides **image-level labels** (e.g., "Shoe", "Watch", "Footwear"). It does **not** provide object bounding boxes.
-> 
-> The blue dot currently visible on the selected image is a **temporary UI placeholder** demonstrating the visual style and future location of the indicator. Real object localization with bounding boxes will be implemented in **Milestone 2**.
+3. Wait for Gradle Sync to complete (Android Studio will resolve dependencies from `libs.versions.toml`).
+4. Connect your Android phone with USB debugging enabled.
+5. Click the green **Run ▶** button.

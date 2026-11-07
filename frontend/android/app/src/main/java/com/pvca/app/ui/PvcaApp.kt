@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.pvca.app.data.model.UiState
 import com.pvca.app.ui.components.AnalysisResultsSection
 import com.pvca.app.ui.components.ImagePreviewSection
 import com.pvca.app.ui.components.PvcaHeader
@@ -33,13 +34,18 @@ fun PvcaApp(
     val selectedImageUri by viewModel.selectedImageUri.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
 
-    // Android Photo Picker Launcher
-    // Standard system-provided picker: does not require intrusive storage permissions
+    // Android Photo Picker Launcher (zero runtime storage permissions needed)
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         viewModel.onImageSelected(uri, context)
     }
+
+    val successState = uiState as? UiState.Success
+    val detectedObjects = successState?.detectedObjects ?: emptyList()
+    val selectedObjectId = successState?.selectedObjectId
+    val imageWidth = successState?.imageWidth ?: 1
+    val imageHeight = successState?.imageHeight ?: 1
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -58,21 +64,31 @@ fun PvcaApp(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Image Picker and Preview Section
+            // Image Picker and Preview Section with Real Detection Bounding Boxes & Blue Dots
             ImagePreviewSection(
                 imageUri = selectedImageUri,
+                detectedObjects = detectedObjects,
+                selectedObjectId = selectedObjectId,
+                imageWidth = imageWidth,
+                imageHeight = imageHeight,
                 onSelectImageClicked = {
                     photoPickerLauncher.launch(
                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                     )
+                },
+                onObjectSelected = { id ->
+                    viewModel.selectObject(id)
                 }
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Dedicated ML Kit Visual Analysis Results Section
+            // Dedicated ML Kit Visual Analysis Results Section (Dual Tab: Objects & Labels)
             AnalysisResultsSection(
-                uiState = uiState
+                uiState = uiState,
+                onObjectSelected = { id ->
+                    viewModel.selectObject(id)
+                }
             )
 
             Spacer(modifier = Modifier.height(24.dp))

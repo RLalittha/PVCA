@@ -57,8 +57,11 @@ dependencies {
     // Image Loading
     implementation(libs.coil.compose)
 
-    // Google ML Kit Image Labeling
+    // Google ML Kit Image Labeling (Preserved from Day 1)
     implementation(libs.mlkit.image.labeling)
+
+    // Google ML Kit Object Detection & Tracking (Milestone 2)
+    implementation("com.google.mlkit:object-detection:17.0.2")
 
     // Kotlin Coroutines Play Services extension for await() support
     implementation(libs.kotlinx.coroutines.play.services)

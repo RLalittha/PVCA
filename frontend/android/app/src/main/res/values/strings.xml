@@ -3,12 +3,16 @@
     <string name="app_tagline">See it. Identify it. Shop it.</string>
     <string name="select_image_button">Select Product Image</string>
     <string name="change_image_button">Select Another Image</string>
-    <string name="ai_analysis_title">AI Visual Analysis</string>
-    <string name="ai_analysis_subtitle">Powered by Google ML Kit (On-Device)</string>
-    <string name="placeholder_badge_title">Interactive Indicator Placeholder</string>
-    <string name="placeholder_badge_desc">Temporary UI placeholder. Real object localisation with bounding boxes arrives in Milestone 2.</string>
+    <string name="ai_analysis_title">AI Visual Intelligence</string>
+    <string name="ai_analysis_subtitle">Google ML Kit Object Detection &amp; Labeling</string>
+    <string name="tab_detected_objects">Detected Objects</string>
+    <string name="tab_image_labels">Image Labels</string>
     <string name="empty_labels_title">No clear labels identified</string>
     <string name="empty_labels_desc">ML Kit was unable to detect recognizable product labels with high confidence. Try another image.</string>
+    <string name="no_objects_detected_title">No objects detected in this image.</string>
+    <string name="no_objects_detected_desc">Try another photograph featuring a prominent product.</string>
     <string name="idle_state_desc">Select a product image above to start on-device visual analysis.</string>
-    <string name="analyzing_text">Analyzing visual concepts…</string>
+    <string name="analyzing_text">Detecting objects &amp; visual concepts…</string>
+    <string name="selected_object_badge">Product matching coming soon</string>
+    <string name="tap_dot_hint">Tap a glowing blue dot to inspect a detected object</string>
 </resources>

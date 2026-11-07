@@ -1,19 +1,12 @@
 package com.pvca.app.ui.components
 
 import android.net.Uri
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -39,27 +33,30 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.pvca.app.R
-import com.pvca.app.ui.theme.PvcaBlueDotGlow
+import com.pvca.app.data.model.DetectedObjectItem
 import com.pvca.app.ui.theme.PvcaCyan
-import com.pvca.app.ui.theme.PvcaPrimaryBlue
 
 @Composable
 fun ImagePreviewSection(
     imageUri: Uri?,
+    detectedObjects: List<DetectedObjectItem>,
+    selectedObjectId: Int?,
+    imageWidth: Int,
+    imageHeight: Int,
     onSelectImageClicked: () -> Unit,
+    onObjectSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -77,7 +74,7 @@ fun ImagePreviewSection(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (imageUri == null) {
-                // Empty image picker prompt area
+                // Empty state: prompt to select an image
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -124,7 +121,7 @@ fun ImagePreviewSection(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "Choose an image featuring a product to test on-device recognition",
+                            text = "Choose an image featuring a product to test on-device object detection",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
@@ -157,8 +154,8 @@ fun ImagePreviewSection(
                     )
                 }
             } else {
-                // Image preview with overlay
-                Box(
+                // Image preview with Real Coordinate Detection Overlay
+                BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(4f / 3f)
@@ -166,6 +163,11 @@ fun ImagePreviewSection(
                         .background(Color.Black),
                     contentAlignment = Alignment.Center
                 ) {
+                    val density = LocalDensity.current
+                    val containerWidthPx = with(density) { maxWidth.toPx() }
+                    val containerHeightPx = with(density) { maxHeight.toPx() }
+
+                    // Base layer: Source Image
                     AsyncImage(
                         model = imageUri,
                         contentDescription = "Selected Product Image",
@@ -173,45 +175,77 @@ fun ImagePreviewSection(
                         contentScale = ContentScale.Fit
                     )
 
-                    // TEMPORARY DEMO UI PLACEHOLDER BLUE-DOT
-                    // As documented in MASTER_HANDOFF.md: ML Kit Image Labeling does NOT provide bounding boxes.
-                    // This placeholder clearly signals the future interactive indicator without misrepresenting localisation.
-                    TemporaryBlueDotPlaceholder()
+                    // Overlay layer: Real Detection Bounding Boxes & Interactive Blue Dots
+                    if (detectedObjects.isNotEmpty() && imageWidth > 0 && imageHeight > 0) {
+                        DetectionBoundingBoxOverlay(
+                            detectedObjects = detectedObjects,
+                            selectedObjectId = selectedObjectId,
+                            imageWidth = imageWidth,
+                            imageHeight = imageHeight,
+                            containerWidthPx = containerWidthPx,
+                            containerHeightPx = containerHeightPx,
+                            onObjectSelected = onObjectSelected
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Explanatory placeholder disclaimer badge
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                // Interactive hint or empty detection status
+                if (detectedObjects.isNotEmpty()) {
                     Row(
-                        modifier = Modifier.padding(10.dp),
-                        verticalAlignment = Alignment.Top
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Info,
+                            imageVector = Icons.Default.TouchApp,
                             contentDescription = null,
                             tint = PvcaCyan,
-                            modifier = Modifier
-                                .size(18.dp)
-                                .padding(top = 1.dp)
+                            modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                text = stringResource(R.string.placeholder_badge_title),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.SemiBold
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.tap_dot_hint),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = PvcaCyan,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    // Display details for the active selected object
+                    val selectedObj = detectedObjects.firstOrNull { it.id == selectedObjectId }
+                        ?: detectedObjects.firstOrNull()
+
+                    if (selectedObj != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        SelectedObjectCard(detectedObject = selectedObj)
+                    }
+                } else {
+                    // Empty object detection banner
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .padding(top = 1.dp)
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = stringResource(R.string.placeholder_badge_desc),
-                                style = MaterialTheme.typography.bodyMedium,
+                                text = stringResource(R.string.no_objects_detected_desc),
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -241,47 +275,5 @@ fun ImagePreviewSection(
                 }
             }
         }
-    }
-}
-
-/**
- * Animated temporary blue-dot placeholder at image center.
- * Conspicuously marks where the interactive blue dot will appear once object detection
- * bounding box coordinates are provided in Milestone 2.
- */
-@Composable
-private fun TemporaryBlueDotPlaceholder() {
-    val infiniteTransition = rememberInfiniteTransition(label = "BlueDotPulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.35f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "PulseScale"
-    )
-
-    Box(
-        modifier = Modifier.size(44.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        // Outer pulsing halo
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .scale(pulseScale)
-                .clip(CircleShape)
-                .background(PvcaBlueDotGlow)
-        )
-
-        // Core solid indicator
-        Box(
-            modifier = Modifier
-                .size(18.dp)
-                .clip(CircleShape)
-                .background(PvcaPrimaryBlue)
-                .border(2.dp, PvcaCyan, CircleShape)
-        )
     }
 }
