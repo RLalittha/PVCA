@@ -31,11 +31,11 @@ data class DetectedObjectItem(
      * Bounding box width in pixels.
      */
     val widthPx: Int
-        get() = rawBoundingBox.width()
+        get() = rawBoundingBox.right - rawBoundingBox.left
 
     /**
      * Bounding box height in pixels.
      */
     val heightPx: Int
-        get() = rawBoundingBox.height()
+        get() = rawBoundingBox.bottom - rawBoundingBox.top
 }

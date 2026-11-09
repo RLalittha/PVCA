@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.pvca.app.R
 import com.pvca.app.data.model.DetectedObjectItem
+import com.pvca.app.data.model.MatchResult
 import com.pvca.app.ui.theme.PvcaCyan
 
 @Composable
@@ -55,8 +56,12 @@ fun ImagePreviewSection(
     selectedObjectId: Int?,
     imageWidth: Int,
     imageHeight: Int,
+    matchResult: MatchResult?,
+    isMatching: Boolean,
     onSelectImageClicked: () -> Unit,
     onObjectSelected: (Int) -> Unit,
+    onUserQuerySubmitted: (String) -> Unit,
+    onClearQuery: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -121,7 +126,7 @@ fun ImagePreviewSection(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "Choose an image featuring a product to test on-device object detection",
+                            text = "Choose an image featuring a product to test on-device recognition and catalogue matching",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
@@ -154,7 +159,7 @@ fun ImagePreviewSection(
                     )
                 }
             } else {
-                // Image preview with Real Coordinate Detection Overlay
+                // Image preview with real Detection Overlay (uncluttered, non-overlapping)
                 BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -175,7 +180,7 @@ fun ImagePreviewSection(
                         contentScale = ContentScale.Fit
                     )
 
-                    // Overlay layer: Real Detection Bounding Boxes & Interactive Blue Dots
+                    // Overlay layer: Real Detection Bounding Boxes & Numbered Blue Dots
                     if (detectedObjects.isNotEmpty() && imageWidth > 0 && imageHeight > 0) {
                         DetectionBoundingBoxOverlay(
                             detectedObjects = detectedObjects,
@@ -191,7 +196,7 @@ fun ImagePreviewSection(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Interactive hint or empty detection status
+                // Interactive hint
                 if (detectedObjects.isNotEmpty()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -213,13 +218,19 @@ fun ImagePreviewSection(
                         )
                     }
 
-                    // Display details for the active selected object
+                    // Display Product Match Discovery Card for the active selected object
                     val selectedObj = detectedObjects.firstOrNull { it.id == selectedObjectId }
                         ?: detectedObjects.firstOrNull()
 
                     if (selectedObj != null) {
                         Spacer(modifier = Modifier.height(10.dp))
-                        SelectedObjectCard(detectedObject = selectedObj)
+                        ProductMatchCard(
+                            selectedObject = selectedObj,
+                            matchResult = matchResult,
+                            isMatching = isMatching,
+                            onUserQuerySubmitted = onUserQuerySubmitted,
+                            onClearQuery = onClearQuery
+                        )
                     }
                 } else {
                     // Empty object detection banner

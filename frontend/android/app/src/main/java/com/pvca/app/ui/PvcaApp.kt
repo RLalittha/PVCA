@@ -33,6 +33,8 @@ fun PvcaApp(
     val context = LocalContext.current
     val selectedImageUri by viewModel.selectedImageUri.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+    val matchResult by viewModel.matchResult.collectAsState()
+    val isMatching by viewModel.isMatchingProduct.collectAsState()
 
     // Android Photo Picker Launcher (zero runtime storage permissions needed)
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -64,20 +66,28 @@ fun PvcaApp(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Image Picker and Preview Section with Real Detection Bounding Boxes & Blue Dots
+            // Image Picker and Preview Section with Blue Dots and Product Discovery Match Card
             ImagePreviewSection(
                 imageUri = selectedImageUri,
                 detectedObjects = detectedObjects,
                 selectedObjectId = selectedObjectId,
                 imageWidth = imageWidth,
                 imageHeight = imageHeight,
+                matchResult = matchResult,
+                isMatching = isMatching,
                 onSelectImageClicked = {
                     photoPickerLauncher.launch(
                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                     )
                 },
                 onObjectSelected = { id ->
-                    viewModel.selectObject(id)
+                    viewModel.selectObject(id, context)
+                },
+                onUserQuerySubmitted = { query ->
+                    viewModel.submitUserRefinement(query, context)
+                },
+                onClearQuery = {
+                    viewModel.clearUserRefinement(context)
                 }
             )
 
@@ -87,7 +97,7 @@ fun PvcaApp(
             AnalysisResultsSection(
                 uiState = uiState,
                 onObjectSelected = { id ->
-                    viewModel.selectObject(id)
+                    viewModel.selectObject(id, context)
                 }
             )
 

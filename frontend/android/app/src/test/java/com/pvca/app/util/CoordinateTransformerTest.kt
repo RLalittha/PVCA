@@ -8,6 +8,14 @@ import org.junit.Test
 
 class CoordinateTransformerTest {
 
+    private fun testRect(left: Int, top: Int, right: Int, bottom: Int): Rect =
+        Rect().apply {
+            this.left = left
+            this.top = top
+            this.right = right
+            this.bottom = bottom
+        }
+
     @Test
     fun squareImageInLandscapeContainer_isCenteredHorizontally() {
         // Container: 1000 x 500, Image: 500 x 500
@@ -25,14 +33,14 @@ class CoordinateTransformerTest {
         assertEquals(0f, transformer.offsetY, 0.001f)
 
         // Test box at center of image [100, 100, 400, 400]
-        val screenRect = transformer.toScreenRect(Rect(100, 100, 400, 400))
+        val screenRect = transformer.toScreenRect(testRect(100, 100, 400, 400))
         assertEquals(350f, screenRect.left, 0.001f)
         assertEquals(100f, screenRect.top, 0.001f)
         assertEquals(650f, screenRect.right, 0.001f)
         assertEquals(400f, screenRect.bottom, 0.001f)
 
         // Center calculation
-        val (centerX, centerY) = transformer.toScreenCenter(Rect(100, 100, 400, 400))
+        val (centerX, centerY) = transformer.toScreenCenter(testRect(100, 100, 400, 400))
         assertEquals(500f, centerX, 0.001f)
         assertEquals(250f, centerY, 0.001f)
     }
@@ -55,7 +63,7 @@ class CoordinateTransformerTest {
         assertEquals(0f, transformer.offsetY, 0.001f)
 
         // Raw box [0, 0, 400, 800] (full image)
-        val screenRect = transformer.toScreenRect(Rect(0, 0, 400, 800))
+        val screenRect = transformer.toScreenRect(testRect(0, 0, 400, 800))
         assertEquals(250f, screenRect.left, 0.001f)
         assertEquals(0f, screenRect.top, 0.001f)
         assertEquals(550f, screenRect.right, 0.001f)
@@ -88,7 +96,7 @@ class CoordinateTransformerTest {
             containerHeight = 400f
         )
 
-        val normalized = transformer.toNormalizedRect(Rect(250, 200, 750, 600))
+        val normalized = transformer.toNormalizedRect(testRect(250, 200, 750, 600))
         assertEquals(0.25f, normalized.left, 0.001f)
         assertEquals(0.25f, normalized.top, 0.001f)
         assertEquals(0.75f, normalized.right, 0.001f)
@@ -103,7 +111,7 @@ class CoordinateTransformerTest {
             containerWidth = 0f,
             containerHeight = 0f
         )
-        val (cx, cy) = transformer.toScreenCenter(Rect(0, 0, 10, 10))
+        val (cx, cy) = transformer.toScreenCenter(testRect(0, 0, 10, 10))
         assertTrue(cx >= 0f)
         assertTrue(cy >= 0f)
     }

@@ -45,11 +45,12 @@ class CoordinateTransformer(
      * Converts a raw bounding box in source image pixels to screen coordinates.
      */
     fun toScreenRect(rawRect: Rect): RectF {
-        val left = offsetX + rawRect.left.toFloat() * scale
-        val top = offsetY + rawRect.top.toFloat() * scale
-        val right = offsetX + rawRect.right.toFloat() * scale
-        val bottom = offsetY + rawRect.bottom.toFloat() * scale
-        return RectF(left, top, right, bottom)
+        val rect = RectF()
+        rect.left = offsetX + rawRect.left.toFloat() * scale
+        rect.top = offsetY + rawRect.top.toFloat() * scale
+        rect.right = offsetX + rawRect.right.toFloat() * scale
+        rect.bottom = offsetY + rawRect.bottom.toFloat() * scale
+        return rect
     }
 
     /**
@@ -68,12 +69,13 @@ class CoordinateTransformer(
      * Normalizes a pixel bounding box into [0.0..1.0] coordinates relative to image bounds.
      */
     fun toNormalizedRect(rawRect: Rect): RectF {
-        if (imageWidth <= 0 || imageHeight <= 0) return RectF(0f, 0f, 0f, 0f)
-        return RectF(
-            (rawRect.left.toFloat() / imageWidth.toFloat()).coerceIn(0f, 1f),
-            (rawRect.top.toFloat() / imageHeight.toFloat()).coerceIn(0f, 1f),
-            (rawRect.right.toFloat() / imageWidth.toFloat()).coerceIn(0f, 1f),
-            (rawRect.bottom.toFloat() / imageHeight.toFloat()).coerceIn(0f, 1f)
-        )
+        val rect = RectF()
+        if (imageWidth > 0 && imageHeight > 0) {
+            rect.left = (rawRect.left.toFloat() / imageWidth.toFloat()).coerceIn(0f, 1f)
+            rect.top = (rawRect.top.toFloat() / imageHeight.toFloat()).coerceIn(0f, 1f)
+            rect.right = (rawRect.right.toFloat() / imageWidth.toFloat()).coerceIn(0f, 1f)
+            rect.bottom = (rawRect.bottom.toFloat() / imageHeight.toFloat()).coerceIn(0f, 1f)
+        }
+        return rect
     }
 }

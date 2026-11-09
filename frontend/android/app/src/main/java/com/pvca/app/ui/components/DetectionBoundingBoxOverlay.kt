@@ -13,10 +13,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -54,6 +52,10 @@ import kotlin.math.roundToInt
  *
  * Coordinates are mapped from source image pixel space to screen display space,
  * taking into account ContentScale.Fit letterboxing and pillarboxing.
+ *
+ * NOTE: Resolves Day 2 label overlap issue by eliminating cluttered floating badges for
+ * unselected objects. The selected object is highlighted clearly, and detailed information
+ * is surfaced in the Product Discovery Card below.
  */
 @Composable
 fun DetectionBoundingBoxOverlay(
@@ -97,14 +99,14 @@ fun DetectionBoundingBoxOverlay(
                     val cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
 
                     if (isSelected) {
-                        // Highlighted fill
+                        // Highlighted fill for selected object
                         drawRoundRect(
                             color = PvcaCyan.copy(alpha = 0.12f),
                             topLeft = Offset(boxLeft, boxTop),
                             size = Size(boxWidth, boxHeight),
                             cornerRadius = cornerRadius
                         )
-                        // Vibrant glowing stroke
+                        // Vibrant glowing solid stroke
                         drawRoundRect(
                             color = PvcaCyan,
                             topLeft = Offset(boxLeft, boxTop),
@@ -113,15 +115,15 @@ fun DetectionBoundingBoxOverlay(
                             style = Stroke(width = 3.dp.toPx())
                         )
                     } else {
-                        // Unselected subtle dashed or semi-transparent stroke
+                        // Unselected subtle dashed stroke that does not clutter the scene
                         drawRoundRect(
-                            color = Color.White.copy(alpha = 0.65f),
+                            color = Color.White.copy(alpha = 0.50f),
                             topLeft = Offset(boxLeft, boxTop),
                             size = Size(boxWidth, boxHeight),
                             cornerRadius = cornerRadius,
                             style = Stroke(
-                                width = 1.8.dp.toPx(),
-                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f), 0f)
+                                width = 1.6.dp.toPx(),
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f), 0f)
                             )
                         )
                     }
@@ -129,19 +131,16 @@ fun DetectionBoundingBoxOverlay(
             }
         }
 
-        // Layer 2: Interactive Blue Dots positioned at actual centers of detected bounding boxes
+        // Layer 2: Interactive Blue Dots positioned at geometric centers of bounding boxes
         detectedObjects.forEach { obj ->
             val isSelected = (obj.id == selectedObjectId)
             val (screenCenterX, screenCenterY) = transformer.toScreenCenter(obj.rawBoundingBox)
 
-            val screenRect = transformer.toScreenRect(obj.rawBoundingBox)
-
-            // Touch target size is 48.dp
+            // 48.dp touch target centered at (screenCenterX, screenCenterY)
             val dotTouchTargetPx = with(density) { 48.dp.toPx() }
             val dotLeftPx = (screenCenterX - dotTouchTargetPx / 2f).roundToInt()
             val dotTopPx = (screenCenterY - dotTouchTargetPx / 2f).roundToInt()
 
-            // Interactive Glowing Blue Dot
             InteractiveBlueDot(
                 isSelected = isSelected,
                 objectId = obj.id,
@@ -149,25 +148,12 @@ fun DetectionBoundingBoxOverlay(
                 onClick = { onObjectSelected(obj.id) },
                 modifier = Modifier.offset { IntOffset(dotLeftPx, dotTopPx) }
             )
-
-            // Category Badge over the top-left of the bounding box
-            val badgeLeftPx = screenRect.left.roundToInt().coerceAtLeast(4)
-            val badgeTopPx = (screenRect.top - with(density) { 24.dp.toPx() }).roundToInt().coerceAtLeast(4)
-
-            ObjectBadge(
-                id = obj.id,
-                category = obj.category,
-                isSelected = isSelected,
-                onClick = { onObjectSelected(obj.id) },
-                modifier = Modifier.offset { IntOffset(badgeLeftPx, badgeTopPx) }
-            )
         }
     }
 }
 
 /**
- * Signature PVCA Interactive Blue Dot.
- * Positioned using true object coordinates. Features a soft outer halo and responsive tap handling.
+ * Signature PVCA Interactive Blue Dot with numeric object identification badge.
  */
 @Composable
 private fun InteractiveBlueDot(
@@ -180,9 +166,9 @@ private fun InteractiveBlueDot(
     val infiniteTransition = rememberInfiniteTransition(label = "BlueDotPulse-$objectId")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = if (isSelected) 1.0f else 0.95f,
-        targetValue = if (isSelected) 1.50f else 1.30f,
+        targetValue = if (isSelected) 1.45f else 1.25f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = if (isSelected) 900 else 1400),
+            animation = tween(durationMillis = if (isSelected) 1000 else 1500),
             repeatMode = RepeatMode.Reverse
         ),
         label = "PulseScale-$objectId"
@@ -204,21 +190,21 @@ private fun InteractiveBlueDot(
             ),
         contentAlignment = Alignment.Center
     ) {
-        // Outer pulsing glowing aura
+        // Outer pulsing aura
         Box(
             modifier = Modifier
-                .size(if (isSelected) 38.dp else 30.dp)
+                .size(if (isSelected) 40.dp else 32.dp)
                 .scale(pulseScale)
                 .clip(CircleShape)
                 .background(
-                    if (isSelected) PvcaCyan.copy(alpha = 0.45f) else PvcaBlueDotGlow
+                    if (isSelected) PvcaCyan.copy(alpha = 0.40f) else PvcaBlueDotGlow
                 )
         )
 
-        // Core dot
+        // Core indicator with #ID number inside
         Box(
             modifier = Modifier
-                .size(if (isSelected) 20.dp else 16.dp)
+                .size(if (isSelected) 24.dp else 20.dp)
                 .clip(CircleShape)
                 .background(if (isSelected) PvcaCyan else PvcaPrimaryBlue)
                 .border(
@@ -228,50 +214,12 @@ private fun InteractiveBlueDot(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            if (isSelected) {
-                // Inner bright pip for active selection
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                )
-            }
+            Text(
+                text = "$objectId",
+                color = if (isSelected) PvcaDeepBlue else Color.White,
+                fontSize = if (isSelected) 11.sp else 10.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
-    }
-}
-
-/**
- * Compact pill badge labeling the detected object above its bounding box.
- */
-@Composable
-private fun ObjectBadge(
-    id: Int,
-    category: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(
-                if (isSelected) PvcaCyan else PvcaDeepBlue.copy(alpha = 0.85f)
-            )
-            .border(
-                width = 1.dp,
-                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(6.dp)
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 7.dp, vertical = 2.dp)
-    ) {
-        Text(
-            text = "#$id $category",
-            fontSize = 11.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = if (isSelected) PvcaDeepBlue else Color.White,
-            maxLines = 1
-        )
     }
 }

@@ -29,9 +29,10 @@ class MainViewModelTest {
             imageWidth = 100,
             imageHeight = 100
         )
-        val viewModel = MainViewModel(FakeVisualAnalyzer(fakeOutput))
+        val viewModel = MainViewModel(visualAnalyzer = FakeVisualAnalyzer(fakeOutput))
         assertNull(viewModel.selectedImageUri.value)
         assertEquals(UiState.Idle, viewModel.uiState.value)
+        assertNull(viewModel.matchResult.value)
     }
 
     @Test
@@ -42,10 +43,11 @@ class MainViewModelTest {
             imageWidth = 100,
             imageHeight = 100
         )
-        val viewModel = MainViewModel(FakeVisualAnalyzer(fakeOutput))
+        val viewModel = MainViewModel(visualAnalyzer = FakeVisualAnalyzer(fakeOutput))
         viewModel.clearSelection()
         assertNull(viewModel.selectedImageUri.value)
         assertEquals(UiState.Idle, viewModel.uiState.value)
+        assertNull(viewModel.matchResult.value)
     }
 
     @Test
@@ -71,11 +73,9 @@ class MainViewModelTest {
             selectedObjectId = 1
         )
 
-        // Verify selectedObject helper
         assertEquals(1, successState.selectedObjectId)
         assertEquals("Fashion good", successState.selectedObject?.category)
 
-        // Copy with new selection
         val updatedState = successState.copy(selectedObjectId = 2)
         assertEquals(2, updatedState.selectedObjectId)
         assertEquals("Home good", updatedState.selectedObject?.category)

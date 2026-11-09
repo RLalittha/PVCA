@@ -9,14 +9,14 @@
 ## Project Status
 
 - **Deadline:** November 12, 2026
-- **Current Phase:** Android Proof of Concept (Day 2)
+- **Current Phase:** Android Proof of Concept (Day 3)
 - **Active Milestones:**
   - [x] **Milestone 0 — Application Foundation:** Android project structure created with Kotlin, Jetpack Compose, Material 3, and Gradle Version Catalog.
   - [x] **Milestone 1 — Image Selection & AI Image Labeling:** Android Photo Picker integrated, Google ML Kit Image Labeling integrated.
   - [x] **Milestone 2 — Object Detection, Bounding Boxes & Interactive Blue Dot:** On-device ML Kit object localization, letterbox-aware coordinate transformation, and interactive glowing blue dot selection.
-  - [ ] **Milestone 3 — Visual Identity & Blue Dot Polishing / Tracking:** (Upcoming)
-  - [ ] **Milestone 4 — Local Verified Product Catalogue:** (Upcoming)
-  - [ ] **Milestone 5 — Product Matching Engine:** (Upcoming)
+  - [x] **Milestone 3 — Visual Identity & Blue Dot Polishing:** Refined non-overlapping numbered blue dots and uncluttered bounding box overlays.
+  - [x] **Milestone 4 — Local Verified Product Catalogue & Matching Engine:** 30 curated demonstration products, object-specific crop analysis, weighted ranking, and user-assisted search fallback.
+  - [ ] **Milestone 5 — Advanced Hybrid Matching & External Search Integration:** (Upcoming)
   - [ ] **Milestone 6 — FastAPI Backend:** (Upcoming)
   - [ ] **Milestone 7 — PayPal Sandbox Integration:** (Upcoming)
 
