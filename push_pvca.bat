@@ -16,60 +16,63 @@ echo Current branch: !CURRENT_BRANCH!
 echo Remote origin:  !REMOTE_URL!
 echo.
 
-REM 2. Display staged files
-echo Staged changes to be committed:
-echo ----------------------------------------------------
-git diff --staged --name-status
-if errorlevel 1 (
-    echo Error reading git status.
-    pause
-    exit /b 1
-)
-echo ----------------------------------------------------
-echo.
-
-REM Check if there is anything staged
+REM 2. Check for staged changes
+set HAS_STAGED=0
 git diff --staged --quiet
-if not errorlevel 1 (
-    echo No changes are currently staged for commit.
-    echo Use 'git add <files>' before running this script.
+if errorlevel 1 set HAS_STAGED=1
+
+if "!HAS_STAGED!"=="1" (
+    echo Staged changes to be committed:
+    echo ----------------------------------------------------
+    git diff --staged --name-status
+    echo ----------------------------------------------------
     echo.
-    pause
-    exit /b 0
-)
+    
+    set /p COMMIT_MSG="Enter commit message (press Enter for 'PVCA update'): "
+    if "!COMMIT_MSG!"=="" set COMMIT_MSG=PVCA update
 
-REM 3. Ask for commit message
-set /p COMMIT_MSG="Enter commit message (press Enter for 'PVCA update'): "
-if "!COMMIT_MSG!"=="" set COMMIT_MSG=PVCA update
-
-echo.
-echo Proposed Commit Message: "!COMMIT_MSG!"
-echo Target: origin/!CURRENT_BRANCH! (Standard push, NEVER forced)
-echo.
-
-REM 4. Request explicit confirmation
-set /p CONFIRM="Are you sure you want to commit and push? (y/N): "
-if /i not "!CONFIRM!"=="y" (
     echo.
-    echo Push cancelled by user. No changes were committed or pushed.
-    pause
-    exit /b 0
+    echo Proposed Commit Message: "!COMMIT_MSG!"
+    echo Target: origin/!CURRENT_BRANCH! (Standard push, NEVER forced)
+    echo.
+
+    set /p CONFIRM="Are you sure you want to commit and push? (y/N): "
+    if /i not "!CONFIRM!"=="y" (
+        echo.
+        echo Push cancelled by user. No changes were committed or pushed.
+        pause
+        exit /b 0
+    )
+
+    echo.
+    echo Committing staged changes...
+    git commit -m "!COMMIT_MSG!"
+    if errorlevel 1 (
+        echo Error: Git commit failed.
+        pause
+        exit /b 1
+    )
+) else (
+    echo No newly staged files found. Checking for unpushed commits...
+    echo.
+    echo Recent local commits:
+    git log --oneline -3
+    echo.
+    set /p CONFIRM="Push pending commits to origin/!CURRENT_BRANCH!? (y/N): "
+    if /i not "!CONFIRM!"=="y" (
+        echo.
+        echo Push cancelled by user.
+        pause
+        exit /b 0
+    )
 )
 
-REM 5. Commit
-echo.
-echo Committing staged changes...
-git commit -m "!COMMIT_MSG!"
-if errorlevel 1 (
-    echo Error: Git commit failed.
-    pause
-    exit /b 1
-)
-
-REM 6. Safe push (never force)
+REM 3. Safe push (never force)
 echo.
 echo Pushing to origin/!CURRENT_BRANCH!...
-git push origin !CURRENT_BRANCH!
+echo (If a GitHub login dialog appears, please complete sign-in in your browser)
+echo.
+git push -u origin !CURRENT_BRANCH!
 if errorlevel 1 (
     echo.
     echo ====================================================
