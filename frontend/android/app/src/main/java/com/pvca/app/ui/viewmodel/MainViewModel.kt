@@ -7,8 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.pvca.app.data.analyzer.CombinedVisualAnalyzer
 import com.pvca.app.data.analyzer.VisualAnalyzer
 import com.pvca.app.data.crop.ObjectCropAnalyzer
-import com.pvca.app.data.matching.DefaultProductMatchingService
 import com.pvca.app.data.matching.ProductMatchingService
+import com.pvca.app.data.network.HybridMatchingService
 import com.pvca.app.data.model.DetectedObjectItem
 import com.pvca.app.data.model.LabelItem
 import com.pvca.app.data.model.MatchResult
@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 class MainViewModel(
     private val visualAnalyzer: VisualAnalyzer = CombinedVisualAnalyzer(),
     private val catalogueRepository: ProductCatalogueRepository = LocalAssetCatalogueRepository(),
-    private val matchingService: ProductMatchingService = DefaultProductMatchingService(catalogueRepository),
+    private val matchingService: ProductMatchingService = HybridMatchingService(catalogueRepository),
     private val cropAnalyzer: ObjectCropAnalyzer = ObjectCropAnalyzer()
 ) : ViewModel() {
 
