@@ -23,17 +23,21 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Checkroom
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.LocalCafe
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Mouse
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.SettingsRemote
 import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material.icons.filled.Store
 import androidx.compose.material.icons.filled.Visibility
@@ -67,10 +71,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
+import com.pvca.app.data.model.CheckoutUiState
 import com.pvca.app.data.model.DetectedObjectItem
 import com.pvca.app.data.model.MatchCandidate
 import com.pvca.app.data.model.MatchConfidenceTier
 import com.pvca.app.data.model.MatchResult
+import com.pvca.app.data.model.ProductItem
 import com.pvca.app.ui.theme.PvcaCyan
 import com.pvca.app.ui.theme.PvcaDeepBlue
 import com.pvca.app.ui.theme.PvcaPrimaryBlue
@@ -84,6 +90,11 @@ fun ProductMatchCard(
     isMatching: Boolean,
     onUserQuerySubmitted: (String) -> Unit,
     onClearQuery: () -> Unit,
+    checkoutState: CheckoutUiState = CheckoutUiState.Idle,
+    onStartCheckout: (ProductItem) -> Unit = {},
+    onCaptureCheckout: (String) -> Unit = {},
+    onCancelCheckout: () -> Unit = {},
+    onResetCheckout: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -190,7 +201,14 @@ fun ProductMatchCard(
             } else {
                 when (matchResult) {
                     is MatchResult.Matched -> {
-                        MatchedProductContent(candidate = matchResult.candidate)
+                        MatchedProductContent(
+                            candidate = matchResult.candidate,
+                            checkoutState = checkoutState,
+                            onStartCheckout = onStartCheckout,
+                            onCaptureCheckout = onCaptureCheckout,
+                            onCancelCheckout = onCancelCheckout,
+                            onResetCheckout = onResetCheckout
+                        )
                     }
                     is MatchResult.NoMatch -> {
                         NoMatchContent(reason = matchResult.reason)
@@ -340,7 +358,14 @@ private fun MatchTierBadge(candidate: MatchCandidate) {
 }
 
 @Composable
-private fun MatchedProductContent(candidate: MatchCandidate) {
+private fun MatchedProductContent(
+    candidate: MatchCandidate,
+    checkoutState: CheckoutUiState,
+    onStartCheckout: (ProductItem) -> Unit,
+    onCaptureCheckout: (String) -> Unit,
+    onCancelCheckout: () -> Unit,
+    onResetCheckout: () -> Unit
+) {
     val product = candidate.product
     val context = LocalContext.current
 
@@ -493,6 +518,303 @@ private fun MatchedProductContent(candidate: MatchCandidate) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // -------------------------------------------------------------
+        // Milestone 7: PayPal Sandbox Checkout Flow
+        // -------------------------------------------------------------
+        Spacer(modifier = Modifier.height(10.dp))
+
+        when (checkoutState) {
+            is CheckoutUiState.Idle -> {
+                Button(
+                    onClick = { onStartCheckout(product) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF003087), // PayPal Brand Navy
+                        contentColor = Color.White
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ShoppingCart,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = PvcaCyan
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Checkout with PayPal Sandbox",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+            is CheckoutUiState.Creating -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = PvcaCyan
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Creating PayPal Sandbox order on backend…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+            is CheckoutUiState.AwaitingApproval -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = PvcaPrimaryBlue.copy(alpha = 0.15f)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, PvcaCyan.copy(alpha = 0.5f))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.OpenInBrowser,
+                                contentDescription = null,
+                                tint = PvcaCyan,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Awaiting PayPal Approval",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = PvcaCyan
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "PayPal opened in browser. After approving payment, return here to complete.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { onCaptureCheckout(checkoutState.orderId) },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = PvcaCyan,
+                                    contentColor = PvcaDeepBlue
+                                )
+                            ) {
+                                Text(
+                                    text = "Complete Payment",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = onCancelCheckout,
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = "Cancel",
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            is CheckoutUiState.Capturing -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = PvcaCyan
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Verifying & capturing transaction with backend…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+            is CheckoutUiState.Success -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = PvcaSuccess.copy(alpha = 0.15f)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, PvcaSuccess.copy(alpha = 0.5f))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = PvcaSuccess,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "PayPal Sandbox Payment Verified! ✓",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = PvcaSuccess
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Order ID: ${checkoutState.orderId}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        if (checkoutState.payerEmail != null) {
+                            Text(
+                                text = "Payer: ${checkoutState.payerEmail}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = "Demonstration payment verified by FastAPI backend. No real funds charged.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = onResetCheckout,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(text = "Done", fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+            is CheckoutUiState.Cancelled -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = PvcaWarning.copy(alpha = 0.12f)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, PvcaWarning.copy(alpha = 0.4f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ErrorOutline,
+                            contentDescription = null,
+                            tint = PvcaWarning,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Payment Cancelled",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = PvcaWarning
+                            )
+                            Text(
+                                text = "Transaction was cancelled. No charges were made.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = onResetCheckout,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = PvcaWarning,
+                                contentColor = PvcaDeepBlue
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Try Again", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+            is CheckoutUiState.Error -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.ErrorOutline,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Checkout Error",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = checkoutState.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = onResetCheckout,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Dismiss", fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         // Non-Misleading Demo Notice & Responsive Store Button
         Column(
             modifier = Modifier.fillMaxWidth()
@@ -505,66 +827,39 @@ private fun MatchedProductContent(candidate: MatchCandidate) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (product.hasVerifiedLiveUrl) {
-                OutlinedButton(
-                    onClick = {
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(product.productUrl))
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Could not open store link", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.OpenInBrowser,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "View Store Listing",
-                        fontSize = 12.sp,
-                        maxLines = 1
-                    )
-                }
-            } else {
-                OutlinedButton(
-                    onClick = {
-                        Toast.makeText(
-                            context,
-                            "External store links are disabled for demonstration products.",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    },
-                    enabled = false,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.OpenInBrowser,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Store Link Disabled (Demo)",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        maxLines = 1
-                    )
-                }
+            OutlinedButton(
+                onClick = {
+                    Toast.makeText(
+                        context,
+                        "External store links are disabled for demonstration products.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                },
+                enabled = false,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                ),
+                border = androidx.compose.foundation.BorderStroke(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.OpenInBrowser,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Store Link Disabled (Demo Catalogue Product)",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    maxLines = 1
+                )
             }
         }
     }

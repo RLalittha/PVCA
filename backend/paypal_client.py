@@ -71,14 +71,16 @@ async def create_order(
     price: float,
     currency: str,
     description: str,
+    return_url: Optional[str] = None,
+    cancel_url: Optional[str] = None,
 ) -> dict:
     """
     Create a PayPal Checkout order and return
     {"order_id": str, "approval_url": str, "status": str}.
     """
     token = await get_access_token()
-    return_url = f"{FRONTEND_RETURN_URL}?paypal_status=success"
-    cancel_url = f"{FRONTEND_RETURN_URL}?paypal_status=cancelled"
+    resolved_return = return_url or f"{FRONTEND_RETURN_URL}?paypal_status=success"
+    resolved_cancel = cancel_url or f"{FRONTEND_RETURN_URL}?paypal_status=cancelled"
 
     payload = {
         "intent": "CAPTURE",
@@ -93,8 +95,8 @@ async def create_order(
             }
         ],
         "application_context": {
-            "return_url": return_url,
-            "cancel_url": cancel_url,
+            "return_url": resolved_return,
+            "cancel_url": resolved_cancel,
             "brand_name": "PVCA Demo Store",
             "user_action": "PAY_NOW",
             "shipping_preference": "NO_SHIPPING",

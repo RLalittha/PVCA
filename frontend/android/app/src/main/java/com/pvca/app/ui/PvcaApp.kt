@@ -35,6 +35,7 @@ fun PvcaApp(
     val uiState by viewModel.uiState.collectAsState()
     val matchResult by viewModel.matchResult.collectAsState()
     val isMatching by viewModel.isMatchingProduct.collectAsState()
+    val checkoutState by viewModel.checkoutState.collectAsState()
 
     // Android Photo Picker Launcher (zero runtime storage permissions needed)
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -88,6 +89,19 @@ fun PvcaApp(
                 },
                 onClearQuery = {
                     viewModel.clearUserRefinement(context)
+                },
+                checkoutState = checkoutState,
+                onStartCheckout = { product ->
+                    viewModel.startCheckout(product, context)
+                },
+                onCaptureCheckout = { orderId ->
+                    viewModel.captureOrder(orderId)
+                },
+                onCancelCheckout = {
+                    viewModel.cancelCheckout()
+                },
+                onResetCheckout = {
+                    viewModel.resetCheckout()
                 }
             )
 

@@ -18,7 +18,7 @@ object BackendConfig {
      * For a physical device on the same Wi-Fi network, replace with your
      * laptop's LAN IP address, e.g.: "http://192.168.1.10:8000"
      */
-    var BASE_URL: String = "http://10.0.2.2:8000"
+    var BASE_URL: String = "http://127.0.0.1:8000"
 
     /** Connection timeout in milliseconds. */
     const val CONNECT_TIMEOUT_MS = 3000

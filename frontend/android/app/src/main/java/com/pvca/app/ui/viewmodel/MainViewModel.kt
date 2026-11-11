@@ -1,6 +1,7 @@
 package com.pvca.app.ui.viewmodel
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,10 +9,16 @@ import com.pvca.app.data.analyzer.CombinedVisualAnalyzer
 import com.pvca.app.data.analyzer.VisualAnalyzer
 import com.pvca.app.data.crop.ObjectCropAnalyzer
 import com.pvca.app.data.matching.ProductMatchingService
+import com.pvca.app.data.network.BackendConfig
+import com.pvca.app.data.network.BackendOrderService
+import com.pvca.app.data.network.CaptureOrderResult
+import com.pvca.app.data.network.CreateOrderResult
 import com.pvca.app.data.network.HybridMatchingService
+import com.pvca.app.data.model.CheckoutUiState
 import com.pvca.app.data.model.DetectedObjectItem
 import com.pvca.app.data.model.LabelItem
 import com.pvca.app.data.model.MatchResult
+import com.pvca.app.data.model.ProductItem
 import com.pvca.app.data.model.UiState
 import com.pvca.app.data.repository.LocalAssetCatalogueRepository
 import com.pvca.app.data.repository.ProductCatalogueRepository
@@ -25,14 +32,16 @@ import kotlinx.coroutines.launch
  * - Image acquisition
  * - Concurrent object detection & scene labeling
  * - Object-specific crop analysis
- * - Local product catalogue search & ranking
+ * - Local & server product catalogue search & ranking
  * - User-assisted search refinement
+ * - PayPal Sandbox checkout creation and capture
  */
 class MainViewModel(
     private val visualAnalyzer: VisualAnalyzer = CombinedVisualAnalyzer(),
     private val catalogueRepository: ProductCatalogueRepository = LocalAssetCatalogueRepository(),
     private val matchingService: ProductMatchingService = HybridMatchingService(catalogueRepository),
-    private val cropAnalyzer: ObjectCropAnalyzer = ObjectCropAnalyzer()
+    private val cropAnalyzer: ObjectCropAnalyzer = ObjectCropAnalyzer(),
+    private val orderService: BackendOrderService = BackendOrderService()
 ) : ViewModel() {
 
     private val _selectedImageUri = MutableStateFlow<Uri?>(null)
@@ -50,6 +59,9 @@ class MainViewModel(
     private val _userRefinementQuery = MutableStateFlow<String?>(null)
     val userRefinementQuery: StateFlow<String?> = _userRefinementQuery.asStateFlow()
 
+    private val _checkoutState = MutableStateFlow<CheckoutUiState>(CheckoutUiState.Idle)
+    val checkoutState: StateFlow<CheckoutUiState> = _checkoutState.asStateFlow()
+
     /**
      * Triggered when an image is picked or cancelled.
      */
@@ -66,6 +78,7 @@ class MainViewModel(
         _uiState.value = UiState.Loading
         _matchResult.value = null
         _userRefinementQuery.value = null
+        _checkoutState.value = CheckoutUiState.Idle
 
         viewModelScope.launch {
             val result = visualAnalyzer.analyze(context, uri)
@@ -108,6 +121,7 @@ class MainViewModel(
 
         _uiState.value = currentState.copy(selectedObjectId = id)
         _userRefinementQuery.value = null
+        _checkoutState.value = CheckoutUiState.Idle
 
         val selectedObj = currentState.detectedObjects.firstOrNull { it.id == id } ?: return
         val currentUri = _selectedImageUri.value ?: return
@@ -150,6 +164,101 @@ class MainViewModel(
         _uiState.value = UiState.Idle
         _matchResult.value = null
         _userRefinementQuery.value = null
+        _checkoutState.value = CheckoutUiState.Idle
+    }
+
+    /**
+     * Initiates PayPal Sandbox checkout by creating an order via the FastAPI backend.
+     * When successful, opens the browser to PayPal's approval URL.
+     */
+    fun startCheckout(product: ProductItem, context: Context) {
+        if (_checkoutState.value is CheckoutUiState.Creating) return
+
+        _checkoutState.value = CheckoutUiState.Creating(product.id)
+
+        viewModelScope.launch {
+            val returnUrl = "${BackendConfig.BASE_URL}/api/orders/web-return?status=success"
+            val cancelUrl = "${BackendConfig.BASE_URL}/api/orders/web-return?status=cancelled"
+
+            val result = orderService.createOrder(
+                productId = product.id,
+                quantity = 1,
+                returnUrl = returnUrl,
+                cancelUrl = cancelUrl
+            )
+
+            when (result) {
+                is CreateOrderResult.Success -> {
+                    _checkoutState.value = CheckoutUiState.AwaitingApproval(
+                        orderId = result.orderId,
+                        approvalUrl = result.approvalUrl,
+                        productTitle = product.title,
+                        price = product.price,
+                        currency = product.currency
+                    )
+
+                    // Open PayPal approval flow in browser
+                    try {
+                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(result.approvalUrl)).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(browserIntent)
+                    } catch (e: Exception) {
+                        _checkoutState.value = CheckoutUiState.Error(
+                            "Order created, but could not open browser: ${e.localizedMessage}"
+                        )
+                    }
+                }
+                is CreateOrderResult.Error -> {
+                    _checkoutState.value = CheckoutUiState.Error(result.message)
+                }
+            }
+        }
+    }
+
+    /**
+     * Captures an approved PayPal order by calling the backend capture endpoint.
+     * Invoked either via deep link (pvca://checkout?token=...) or manual confirmation button.
+     */
+    fun captureOrder(orderId: String) {
+        if (orderId.isBlank()) return
+        _checkoutState.value = CheckoutUiState.Capturing(orderId)
+
+        viewModelScope.launch {
+            val result = orderService.captureOrder(orderId)
+            when (result) {
+                is CaptureOrderResult.Success -> {
+                    if (result.status.equals("COMPLETED", ignoreCase = true)) {
+                        _checkoutState.value = CheckoutUiState.Success(
+                            orderId = result.orderId,
+                            payerEmail = result.payerEmail,
+                            message = "Payment captured successfully! Demo transaction confirmed."
+                        )
+                    } else {
+                        _checkoutState.value = CheckoutUiState.Error(
+                            "Order status is ${result.status}. Please complete approval on PayPal."
+                        )
+                    }
+                }
+                is CaptureOrderResult.Error -> {
+                    _checkoutState.value = CheckoutUiState.Error(result.message)
+                }
+            }
+        }
+    }
+
+    /**
+     * Marks the checkout as cancelled by the user.
+     */
+    fun cancelCheckout(orderId: String? = null) {
+        _checkoutState.value = CheckoutUiState.Cancelled(orderId)
+    }
+
+    /**
+     * Resets checkout state back to Idle.
+     */
+    fun resetCheckout() {
+        _checkoutState.value = CheckoutUiState.Idle
     }
 
     private fun triggerProductMatching(

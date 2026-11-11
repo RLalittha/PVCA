@@ -45,8 +45,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.pvca.app.R
+import com.pvca.app.data.model.CheckoutUiState
 import com.pvca.app.data.model.DetectedObjectItem
 import com.pvca.app.data.model.MatchResult
+import com.pvca.app.data.model.ProductItem
 import com.pvca.app.ui.theme.PvcaCyan
 
 @Composable
@@ -62,6 +64,11 @@ fun ImagePreviewSection(
     onObjectSelected: (Int) -> Unit,
     onUserQuerySubmitted: (String) -> Unit,
     onClearQuery: () -> Unit,
+    checkoutState: CheckoutUiState = CheckoutUiState.Idle,
+    onStartCheckout: (ProductItem) -> Unit = {},
+    onCaptureCheckout: (String) -> Unit = {},
+    onCancelCheckout: () -> Unit = {},
+    onResetCheckout: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -229,7 +236,12 @@ fun ImagePreviewSection(
                             matchResult = matchResult,
                             isMatching = isMatching,
                             onUserQuerySubmitted = onUserQuerySubmitted,
-                            onClearQuery = onClearQuery
+                            onClearQuery = onClearQuery,
+                            checkoutState = checkoutState,
+                            onStartCheckout = onStartCheckout,
+                            onCaptureCheckout = onCaptureCheckout,
+                            onCancelCheckout = onCancelCheckout,
+                            onResetCheckout = onResetCheckout
                         )
                     }
                 } else {

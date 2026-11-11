@@ -84,6 +84,8 @@ class MatchResponse(BaseModel):
 class CreateOrderRequest(BaseModel):
     product_id: str = Field(description="Catalogue product ID to purchase.")
     quantity: int = Field(default=1, ge=1, le=10)
+    return_url: Optional[str] = Field(default=None, description="Custom return URL after approval.")
+    cancel_url: Optional[str] = Field(default=None, description="Custom cancel URL.")
 
 
 class OrderResponse(BaseModel):

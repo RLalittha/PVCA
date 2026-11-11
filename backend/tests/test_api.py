@@ -185,6 +185,13 @@ def test_capture_order_no_credentials_503():
     assert r.status_code == 503
 
 
+def test_order_web_return_html():
+    """Landing page returns HTML with pvca deep-link scheme."""
+    r = client.get("/api/orders/web-return?token=ORDER-123&status=success")
+    assert r.status_code == 200
+    assert "pvca://checkout?token=ORDER-123&status=success" in r.text
+
+
 @pytest.mark.skipif(not PAYPAL_CREDS_AVAILABLE, reason="No PayPal Sandbox credentials configured.")
 def test_create_order_live_sandbox():
     """Integration test: create a real Sandbox order. Requires .env credentials."""
