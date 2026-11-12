@@ -27,7 +27,8 @@ class BackendMatchingService : ProductMatchingService {
         selectedObject: DetectedObjectItem,
         cropLabels: List<LabelItem>,
         sceneLabels: List<LabelItem>,
-        userQuery: String?
+        userQuery: String?,
+        cropImageBase64: String?
     ): MatchResult = withContext(Dispatchers.IO) {
         val url = URL("${BackendConfig.BASE_URL}/api/products/match")
         val conn = url.openConnection() as HttpURLConnection
@@ -41,7 +42,7 @@ class BackendMatchingService : ProductMatchingService {
             conn.doOutput = true
 
             // Build request JSON
-            val requestBody = buildRequestJson(selectedObject, cropLabels, sceneLabels, userQuery)
+            val requestBody = buildRequestJson(selectedObject, cropLabels, sceneLabels, userQuery, cropImageBase64)
 
             OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { writer ->
                 writer.write(requestBody.toString())
@@ -65,7 +66,8 @@ class BackendMatchingService : ProductMatchingService {
         selectedObject: DetectedObjectItem,
         cropLabels: List<LabelItem>,
         sceneLabels: List<LabelItem>,
-        userQuery: String?
+        userQuery: String?,
+        cropImageBase64: String?
     ): JSONObject {
         val json = JSONObject()
         json.put("detected_category", selectedObject.category)
@@ -92,22 +94,30 @@ class BackendMatchingService : ProductMatchingService {
             json.put("user_query", userQuery)
         }
 
+        if (cropImageBase64 != null) {
+            json.put("crop_image_base64", cropImageBase64)
+        }
+
         return json
     }
 
     private fun parseMatchResponse(responseText: String): MatchResult {
         val json = JSONObject(responseText)
         val matched = json.optBoolean("matched", false)
+        val identifiedAs = if (json.has("identified_as") && !json.isNull("identified_as")) {
+            json.getString("identified_as")
+        } else null
 
         if (!matched) {
             return MatchResult.NoMatch(
                 reason = json.optString("no_match_reason", "No match from backend."),
-                suggestedCategory = if (json.has("suggested_category")) json.optString("suggested_category") else null
+                suggestedCategory = if (json.has("suggested_category")) json.optString("suggested_category") else null,
+                identifiedAs = identifiedAs
             )
         }
 
         val candidateJson = json.optJSONObject("candidate")
-            ?: return MatchResult.NoMatch(reason = "Backend returned matched=true but no candidate.")
+            ?: return MatchResult.NoMatch(reason = "Backend returned matched=true but no candidate.", identifiedAs = identifiedAs)
 
         val productJson = candidateJson.getJSONObject("product")
         val product = parseProduct(productJson)
@@ -122,6 +132,9 @@ class BackendMatchingService : ProductMatchingService {
         val explanation = candidateJson.optString("evidence_explanation", "")
         val matchSource = candidateJson.optString("match_source", "backend")
         val isUserRefined = candidateJson.optBoolean("is_user_refined", false)
+        val candidateIdentified = if (candidateJson.has("identified_as") && !candidateJson.isNull("identified_as")) {
+            candidateJson.getString("identified_as")
+        } else identifiedAs
 
         return MatchResult.Matched(
             MatchCandidate(
@@ -133,7 +146,8 @@ class BackendMatchingService : ProductMatchingService {
                 } else {
                     explanation
                 },
-                isUserRefined = isUserRefined
+                isUserRefined = isUserRefined,
+                identifiedAs = candidateIdentified
             )
         )
     }

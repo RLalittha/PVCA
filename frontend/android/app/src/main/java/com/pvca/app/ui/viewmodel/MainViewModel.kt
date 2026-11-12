@@ -270,15 +270,23 @@ class MainViewModel(
     ) {
         _isMatchingProduct.value = true
         viewModelScope.launch {
-            // 1. Analyze object-specific crop
+            // 1. Analyze object-specific crop with on-device ML Kit
             val cropLabels = cropAnalyzer.analyzeCrop(context, imageUri, selectedObject.rawBoundingBox)
 
-            // 2. Query catalogue and rank candidates
+            // 2. If no manual user query, prepare compressed crop image for Gemini Vision
+            val cropBase64 = if (userQuery.isNullOrBlank()) {
+                cropAnalyzer.extractCroppedJpegBase64(context, imageUri, selectedObject.rawBoundingBox)
+            } else {
+                null
+            }
+
+            // 3. Query catalogue and rank candidates (uses Gemini Vision when available, with ML Kit fallback)
             val result = matchingService.findBestMatch(
                 selectedObject = selectedObject,
                 cropLabels = cropLabels,
                 sceneLabels = sceneLabels,
-                userQuery = userQuery
+                userQuery = userQuery,
+                cropImageBase64 = cropBase64
             )
 
             _matchResult.value = result

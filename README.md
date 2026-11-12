@@ -1,96 +1,130 @@
 # PVCA — PayPal Visual Commerce Assistant
 
-> **See it. Identify it. Shop it.**
-> 
-> *An AI-powered visual commerce assistant connecting on-screen product discovery with seamless PayPal checkout.*
+**See it. Identify it. Shop it.**
 
----
+PVCA is an AI-powered Android visual shopping prototype that helps users discover products shown on their phone screen, identify them using Google Gemini, find suitable items in a demonstration catalogue, and continue to PayPal Sandbox checkout.
 
-## Project Status
+## Project Overview
 
-- **Deadline:** November 12, 2026
-- **Primary Demonstration:** Interactive Web Application (`frontend/web`)
-- **Secondary Prototype:** Android Mobile Client (`frontend/android`)
-- **Active Milestones:**
-  - [x] **Milestone 0 — Application Foundation:** Android foundation and Gradle Version Catalog.
-  - [x] **Milestone 1 — Image Selection & AI Image Labeling:** Photo Picker and Google ML Kit Image Labeling.
-  - [x] **Milestone 2 — Object Detection & Interactive Blue Dot:** On-device object localization, letterbox-aware coordinate transformation, and interactive glowing blue dot selection.
-  - [x] **Milestone 3 — Visual Identity Polishing:** Refined non-overlapping numbered blue dots and uncluttered bounding box overlays.
-  - [x] **Milestone 4 — Verified Product Catalogue & Matching Engine:** 30 curated demonstration products, object-specific crop analysis, weighted ranking, and user-assisted search fallback.
-  - [x] **Milestone 6 — Distributed FastAPI Backend:** Client-server architecture with health, catalogue, search, and matching endpoints.
-  - [x] **Web-First Demonstration:** React 18, TypeScript, Tailwind CSS, Vite, and TensorFlow.js client-side COCO-SSD object detection.
-  - [ ] **Milestone 7 — PayPal Sandbox Integration:** (Upcoming — Day 5)
+PVCA was developed as a hackathon prototype to make visual product discovery more convenient.
 
----
+The **native Android application is the primary demonstration**. An additional browser-based prototype is included in the repository.
+
+### Working Android Demo
+
+The following workflow has been tested on a Motorola Edge 60 Fusion:
+
+1. Launch PVCA and approve the required Android permissions.
+2. Open a product image on the phone.
+3. Use the floating **Scan** control.
+4. Tap a detected object's blue marker.
+5. PVCA analyzes the selected product using Google Gemini.
+6. The backend searches the local demonstration catalogue.
+7. A matching product card appears when a suitable item is found.
+8. Open PayPal Sandbox checkout from the product card.
+
+**Verified example:** Black over-ear headphones were identified and matched to *SoundWave Pro Hybrid Active Noise-Cancelling Headphones*. PayPal Sandbox checkout opened in the browser, with PVCA's floating overlays removed.
+
+The payment integration uses **PayPal Sandbox**. No real purchase is required.
+
+## Key Features
+
+- Android screen capture using MediaProjection
+- Floating Scan control
+- Google ML Kit object detection
+- Interactive blue-dot object selection
+- Google Gemini visual product identification
+- FastAPI backend
+- Local demonstration product catalogue
+- Custom product matching and ranking
+- Manual search refinement
+- Product-type compatibility filtering
+- Safe no-match results for unsupported products
+- PayPal Sandbox checkout redirect
+- Additional React web prototype
+
+## Technology Stack
+
+| Component | Technology |
+| --- | --- |
+| Android app | Kotlin, Jetpack Compose |
+| Screen capture | Android MediaProjection |
+| Object detection | Google ML Kit |
+| AI identification | Google Gemini API |
+| Backend | Python, FastAPI |
+| Product matching | Custom catalogue ranking |
+| Payment demonstration | PayPal Sandbox REST API |
+| Additional web prototype | React, TypeScript, Vite |
+| Development assistance | Antigravity AI coding assistant |
 
 ## Repository Structure
 
-```text
-PVCA/
-├── AGENTS.md                  # Operational rules and role definitions
-├── MASTER_HANDOFF.md          # Canonical project vision and architectural decisions
-├── backend/                   # Python FastAPI service (Catalogue, Search, Matching)
-│   ├── main.py                # FastAPI routes & CORS middleware
-│   ├── models.py              # Pydantic v2 schemas
-│   ├── catalogue.py           # 30-item demonstration product catalogue
-│   ├── matching.py            # Transparent weighted ranking engine
-│   └── tests/test_api.py      # Automated backend test suite (13 tests)
-├── frontend/
-│   ├── web/                   # Primary Hackathon Demonstration (React + TS + Vite + TF.js)
-│   │   ├── src/               # React application, components, and TF.js detector
-│   │   └── package.json       # Web dependencies and scripts
-│   └── android/               # Secondary Mobile Prototype (Kotlin + Jetpack Compose + ML Kit)
-│       └── app/               # Android mobile application module
-└── docs/                      # Architectural specifications & daily engineering reports
-```
+- `backend/` — FastAPI backend, AI integration, matching logic, tests
+- `frontend/android/` — Native Android application
+- `frontend/web/` — Additional web prototype
+- `start_pvca.bat` — Windows backend launcher
 
----
+## Setup
 
-## Quick-Start Running Guide (Windows)
+### Backend
 
-### 1. Primary Demonstration — Web Application (Chrome)
+You will need Python, internet connectivity, a Gemini API key, and PayPal Sandbox credentials.
 
-Open two PowerShell windows:
+1. Open a terminal in the `backend` directory.
+2. Create and activate a Python virtual environment.
+3. Install the backend dependencies using the dependency file provided in the repository.
+4. Copy `backend/.env.example` to `backend/.env`.
+5. Enter your own credentials in `.env`.
+6. Start the FastAPI application using the provided Windows launcher or an appropriate Uvicorn command.
 
-#### Terminal 1 — Start the FastAPI Backend
+**Security:** Never commit `.env`, API keys, PayPal secrets, or local machine configuration files.
+
+### Android Application
+
+1. Open `frontend/android` in Android Studio.
+2. Sync the Gradle project.
+3. Connect an Android device with USB debugging enabled.
+4. Start the backend.
+5. Forward the backend port to the Android device using:
+
 ```powershell
-cd D:\PVCA\backend
-.\.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+adb reverse tcp:8000 tcp:8000
 ```
-*Healthcheck:* [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health) -> `{"status":"ok","version":"1.0.0"}`
 
-#### Terminal 2 — Start the React Web Application
-```powershell
-$env:PATH = "D:\PVCA\.tools\node-v20.18.0-win-x64;$env:PATH"
-$env:NODE_EXTRA_CA_CERTS = "D:\PVCA\.tools\avast_root.pem"
-cd D:\PVCA\frontend\web
-npm run dev
-```
-Open **[http://localhost:5173](http://localhost:5173)** in Google Chrome.
+6. Build and run the Android application.
+7. Grant the requested overlay and screen-capture permissions.
+8. Open a product image and use the floating Scan control.
 
----
+## Testing
 
-### 2. Secondary Prototype — Android Mobile Application
+Backend tests have been run successfully.
 
-To run the Android client on a physical phone (e.g. Motorola Edge 60 Fusion):
+**Latest verified backend test result:** 28 passed, 2 skipped, 1 deselected.
 
-1. Forward backend traffic over USB debugging:
-   ```powershell
-   adb reverse tcp:8000 tcp:8000
-   ```
-2. Build and launch debug APK:
-   ```powershell
-   $env:JAVA_HOME = "C:\Users\RADHAKRISHNAN\.jdks\jbr-21.0.11"
-   cd D:\PVCA\frontend\android
-   & "C:\Users\RADHAKRISHNAN\.gradle\wrapper\dists\gradle-8.7-bin\bhs2wmbdwecv87pi65oeuq5iu\gradle-8.7\bin\gradle.bat" :app:installDebug
-   ```
+Android unit tests have also completed successfully using the Gradle task `:app:testDebugUnitTest`.
 
----
+## Demonstrated Results
 
-## Canonical Documentation
+**Headphones:** Successfully identified and matched to a headphones product in the demonstration catalogue. PayPal Sandbox checkout opened successfully.
 
-- [MASTER_HANDOFF.md](file:///D:/PVCA/MASTER_HANDOFF.md): Master specifications and architectural requirements.
-- [AGENTS.md](file:///D:/PVCA/AGENTS.md): Coding rules, security boundaries, and instructions.
-- [WEB_TRANSITION_ENGINEERING_REPORT.md](file:///D:/PVCA/docs/WEB_TRANSITION_ENGINEERING_REPORT.md): Web architecture, browser detection, and test reports.
-- [DAY4_ENGINEERING_REPORT.md](file:///D:/PVCA/docs/DAY4_ENGINEERING_REPORT.md): FastAPI backend and Android hybrid integration report.
-- [DAY3_ENGINEERING_REPORT.md](file:///D:/PVCA/docs/DAY3_ENGINEERING_REPORT.md): On-device matching engine and mobile UI report.
+**USB cable:** Returned a no-match result rather than recommending an unrelated product.
+
+## Known Limitations
+
+- PVCA uses a limited local demonstration catalogue, not live listings from every retailer.
+- Gemini visual identification may occasionally be inaccurate.
+- Catalogue matches are recommendations, not guaranteed exact-product identification.
+- Unsupported products may produce a no-match result.
+- Gemini and PayPal Sandbox features require internet connectivity.
+- Android screen-capture restrictions may prevent analysis of protected content.
+- This is a hackathon prototype, not a production commerce or payment application.
+
+## Demo Video
+
+YouTube demo: **Link to be added before submission.**
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
+
+Copyright © 2026 RLalittha.

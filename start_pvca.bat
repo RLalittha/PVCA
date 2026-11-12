@@ -7,6 +7,7 @@ echo ====================================================
 REM Set environment for portable Node and trusted Avast root CA
 set "PATH=D:\PVCA\.tools\node-v20.18.0-win-x64;%PATH%"
 set "NODE_EXTRA_CA_CERTS=D:\PVCA\.tools\avast_root.pem"
+set "SSL_CERT_FILE=D:\PVCA\.tools\combined_ca.pem"
 
 REM Launch FastAPI Backend in a new persistent console window
 start "PVCA Backend (Port 8000)" cmd /k "cd /d D:\PVCA\backend && .venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload"

@@ -57,7 +57,11 @@ class MatchRequest(BaseModel):
     )
     user_query: Optional[str] = Field(
         default=None,
-        description="Optional free-text user refinement query.",
+        description="Optional free-text user refinement query. Takes priority over AI identification.",
+    )
+    crop_image_base64: Optional[str] = Field(
+        default=None,
+        description="Optional Base64 crop of the detected object for automated Gemini identification.",
     )
 
 
@@ -68,6 +72,7 @@ class MatchCandidate(BaseModel):
     evidence_explanation: str
     is_user_refined: bool
     match_source: str = "backend"
+    identified_as: Optional[str] = None
 
 
 class MatchResponse(BaseModel):
@@ -75,6 +80,24 @@ class MatchResponse(BaseModel):
     candidate: Optional[MatchCandidate] = None
     no_match_reason: Optional[str] = None
     suggested_category: Optional[str] = None
+    identified_as: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Gemini object identification models
+# ---------------------------------------------------------------------------
+
+class IdentifyRequest(BaseModel):
+    image_base64: str = Field(description="Base64-encoded image crop of the detected object.")
+    detected_category: Optional[str] = Field(default=None, description="Optional ML Kit broad category.")
+
+
+class IdentifyResponse(BaseModel):
+    identified: bool
+    identified_label: Optional[str] = None
+    confidence_tier: str = "UNAVAILABLE"   # HIGH | MEDIUM | LOW | UNAVAILABLE
+    source: str = "gemini"                 # gemini | fallback
+    message: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

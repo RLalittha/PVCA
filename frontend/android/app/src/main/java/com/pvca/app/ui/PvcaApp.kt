@@ -24,11 +24,15 @@ import com.pvca.app.data.model.UiState
 import com.pvca.app.ui.components.AnalysisResultsSection
 import com.pvca.app.ui.components.ImagePreviewSection
 import com.pvca.app.ui.components.PvcaHeader
+import com.pvca.app.ui.components.VisualShoppingSection
 import com.pvca.app.ui.viewmodel.MainViewModel
 
 @Composable
 fun PvcaApp(
-    viewModel: MainViewModel = viewModel()
+    viewModel: MainViewModel = viewModel(),
+    isVisualShoppingActive: Boolean = false,
+    onStartVisualShopping: () -> Unit = {},
+    onStopVisualShopping: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val selectedImageUri by viewModel.selectedImageUri.collectAsState()
@@ -64,6 +68,15 @@ fun PvcaApp(
         ) {
             // Branded Application Header
             PvcaHeader()
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // System-Wide Live Visual Shopping Action Card (Original Vision)
+            VisualShoppingSection(
+                isActive = isVisualShoppingActive,
+                onStartClicked = onStartVisualShopping,
+                onStopClicked = onStopVisualShopping
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 

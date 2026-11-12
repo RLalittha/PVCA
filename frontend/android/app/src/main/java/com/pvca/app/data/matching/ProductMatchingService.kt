@@ -20,7 +20,8 @@ interface ProductMatchingService {
         selectedObject: DetectedObjectItem,
         cropLabels: List<LabelItem>,
         sceneLabels: List<LabelItem>,
-        userQuery: String? = null
+        userQuery: String? = null,
+        cropImageBase64: String? = null
     ): MatchResult
 }
 
@@ -32,7 +33,8 @@ class DefaultProductMatchingService(
         selectedObject: DetectedObjectItem,
         cropLabels: List<LabelItem>,
         sceneLabels: List<LabelItem>,
-        userQuery: String?
+        userQuery: String?,
+        cropImageBase64: String?
     ): MatchResult = withContext(Dispatchers.Default) {
         val allProducts = repository.getAllProducts()
         if (allProducts.isEmpty()) {

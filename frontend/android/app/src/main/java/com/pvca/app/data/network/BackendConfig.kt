@@ -24,5 +24,5 @@ object BackendConfig {
     const val CONNECT_TIMEOUT_MS = 3000
 
     /** Read timeout in milliseconds. */
-    const val READ_TIMEOUT_MS = 5000
+    const val READ_TIMEOUT_MS = 30000
 }

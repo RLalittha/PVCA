@@ -25,17 +25,18 @@ class HybridMatchingService(
         selectedObject: DetectedObjectItem,
         cropLabels: List<LabelItem>,
         sceneLabels: List<LabelItem>,
-        userQuery: String?
+        userQuery: String?,
+        cropImageBase64: String?
     ): MatchResult {
         return try {
             val backendResult = backendService.findBestMatch(
-                selectedObject, cropLabels, sceneLabels, userQuery
+                selectedObject, cropLabels, sceneLabels, userQuery, cropImageBase64
             )
             backendResult
         } catch (e: Exception) {
             // Backend unreachable or error — fall back to local matching
             val localResult = localService.findBestMatch(
-                selectedObject, cropLabels, sceneLabels, userQuery
+                selectedObject, cropLabels, sceneLabels, userQuery, cropImageBase64
             )
             // Append fallback note to the evidence explanation
             when (localResult) {

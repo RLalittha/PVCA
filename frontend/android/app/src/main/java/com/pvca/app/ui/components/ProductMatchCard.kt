@@ -370,6 +370,34 @@ private fun MatchedProductContent(
     val context = LocalContext.current
 
     Column(modifier = Modifier.fillMaxWidth()) {
+        // AI Identification Banner (Gemini Vision)
+        if (!candidate.identifiedAs.isNullOrBlank()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(PvcaCyan.copy(alpha = 0.12f))
+                    .border(1.dp, PvcaCyan.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AutoAwesome,
+                    contentDescription = "AI Identified",
+                    tint = PvcaCyan,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "AI Identified: ${candidate.identifiedAs}",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = PvcaCyan
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+        }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top

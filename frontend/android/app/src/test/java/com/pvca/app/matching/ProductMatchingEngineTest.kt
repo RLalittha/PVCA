@@ -149,4 +149,41 @@ class ProductMatchingEngineTest {
         val noMatch = result as MatchResult.NoMatch
         assertTrue(noMatch.reason.contains("No reliable match", ignoreCase = true))
     }
+
+    @Test
+    fun matchCandidate_preservesIdentifiedAsField() = runBlocking {
+        val candidate = com.pvca.app.data.model.MatchCandidate(
+            product = repo.getAllProducts().first(),
+            score = 0.95f,
+            confidenceTier = MatchConfidenceTier.HIGH_CONFIDENCE,
+            evidenceExplanation = "Matched via Gemini Vision",
+            isUserRefined = false,
+            identifiedAs = "ceiling fan remote control"
+        )
+        assertEquals("ceiling fan remote control", candidate.identifiedAs)
+        assertEquals(false, candidate.isUserRefined)
+    }
+
+    @Test
+    fun manualUserRefinement_alwaysMarksUserRefined() = runBlocking {
+        val detectedRemote = DetectedObjectItem(
+            id = 4,
+            rawBoundingBox = Rect(10, 10, 100, 100),
+            normalizedBoundingBox = RectF(0.1f, 0.1f, 0.4f, 0.4f),
+            category = "General Object"
+        )
+
+        val result = matchingService.findBestMatch(
+            selectedObject = detectedRemote,
+            cropLabels = emptyList(),
+            sceneLabels = emptyList(),
+            userQuery = "ceiling fan remote controller",
+            cropImageBase64 = null
+        )
+
+        assertTrue(result is MatchResult.Matched)
+        val matched = result as MatchResult.Matched
+        assertEquals("PVCA-ELEC-001", matched.candidate.product.id)
+        assertTrue(matched.candidate.isUserRefined)
+    }
 }

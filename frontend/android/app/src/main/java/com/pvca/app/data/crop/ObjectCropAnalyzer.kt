@@ -58,6 +58,41 @@ class ObjectCropAnalyzer(
         }
     }
 
+    /**
+     * Extracts the cropped object bitmap, scales it to a max dimension of 512px
+     * (to conserve network bandwidth and ensure fast inference), and encodes it
+     * as a Base64 JPEG string. Returns null if extraction or encoding fails.
+     */
+    fun extractCroppedJpegBase64(context: Context, uri: Uri, boundingBox: Rect): String? {
+        val cropped = extractCroppedBitmap(context, uri, boundingBox) ?: return null
+        return try {
+            val maxDim = 512
+            val scaledBitmap = if (cropped.width > maxDim || cropped.height > maxDim) {
+                val ratio = minOf(maxDim.toFloat() / cropped.width, maxDim.toFloat() / cropped.height)
+                val targetW = (cropped.width * ratio).toInt().coerceAtLeast(1)
+                val targetH = (cropped.height * ratio).toInt().coerceAtLeast(1)
+                Bitmap.createScaledBitmap(cropped, targetW, targetH, true)
+            } else {
+                cropped
+            }
+
+            val stream = java.io.ByteArrayOutputStream()
+            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
+            val bytes = stream.toByteArray()
+
+            if (scaledBitmap != cropped && !scaledBitmap.isRecycled) {
+                scaledBitmap.recycle()
+            }
+            android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+        } catch (e: Exception) {
+            null
+        } finally {
+            if (!cropped.isRecycled) {
+                cropped.recycle()
+            }
+        }
+    }
+
     private fun extractCroppedBitmap(context: Context, uri: Uri, boundingBox: Rect): Bitmap? {
         return try {
             val resolver = context.contentResolver
@@ -110,6 +145,62 @@ class ObjectCropAnalyzer(
             val cropped = Bitmap.createBitmap(fullBitmap, left, top, cropWidth, cropHeight)
             fullBitmap.recycle()
             cropped
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Safely extracts a cropped [Bitmap] directly from an in-memory [source] Bitmap.
+     * Does NOT recycle the source bitmap, allowing multiple crops from the same frame.
+     */
+    fun cropBitmap(source: Bitmap, boundingBox: Rect): Bitmap? {
+        return try {
+            val left = boundingBox.left.coerceIn(0, source.width - 1)
+            val top = boundingBox.top.coerceIn(0, source.height - 1)
+            val right = boundingBox.right.coerceIn(left + 1, source.width)
+            val bottom = boundingBox.bottom.coerceIn(top + 1, source.height)
+
+            val cropWidth = right - left
+            val cropHeight = bottom - top
+
+            if (cropWidth <= 0 || cropHeight <= 0) return null
+
+            Bitmap.createBitmap(source, left, top, cropWidth, cropHeight)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Converts a [Bitmap] to a scaled Base64 JPEG string entirely in memory.
+     * Caps maximum dimension to prevent large payloads (default 512px).
+     */
+    fun bitmapToJpegBase64(bitmap: Bitmap, maxDimension: Int = 512, quality: Int = 85): String? {
+        return try {
+            val width = bitmap.width
+            val height = bitmap.height
+            val scale = if (width > maxDimension || height > maxDimension) {
+                maxDimension.toFloat() / maxOf(width, height)
+            } else {
+                1f
+            }
+
+            val scaledBitmap = if (scale < 1f) {
+                val scaledW = (width * scale).toInt().coerceAtLeast(1)
+                val scaledH = (height * scale).toInt().coerceAtLeast(1)
+                Bitmap.createScaledBitmap(bitmap, scaledW, scaledH, true)
+            } else {
+                bitmap
+            }
+
+            val outputStream = java.io.ByteArrayOutputStream()
+            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+            if (scaledBitmap != bitmap) {
+                scaledBitmap.recycle()
+            }
+            val bytes = outputStream.toByteArray()
+            android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
         } catch (e: Exception) {
             null
         }

@@ -1,5 +1,5 @@
 """
-Product matching logic — Python port of DefaultProductMatchingService.kt.
+Product matching logic â€” Python port of DefaultProductMatchingService.kt.
 
 Weights:
   With user query : user 50%, crop 30%, category 15%, scene 5%
@@ -83,29 +83,126 @@ def _build_explanation(
 # Public API
 # ---------------------------------------------------------------------------
 
+
+def _product_type(text: str) -> str | None:
+    """Identify specific product types without relying on broad categories."""
+    import re
+
+    text = text.lower()
+
+    patterns = {
+        "cable": r"\b(cables?|usb[\s-]*c|micro[\s-]*usb|charging[\s-]*cords?|data[\s-]*cords?)\b",
+        "headphones": r"\b(headphones?|headsets?|earphones?|earbuds?)\b",
+        "footwear": r"\b(sneakers?|shoes?|trainers?|footwear|boots?)\b",
+        "eyewear": r"\b(glasses|sunglasses|eyeglasses|spectacles|frames)\b",
+    }
+
+    for product_type, pattern in patterns.items():
+        if re.search(pattern, text):
+            return product_type
+
+    return None
+
 def find_best_match(
     detected_category: str,
     crop_labels: list[LabelInput],
     scene_labels: list[LabelInput],
     user_query: str | None,
+    ai_identified_label: str | None = None,
 ) -> MatchResponse:
     all_products = load_catalogue()
     if not all_products:
         return MatchResponse(matched=False, no_match_reason="Product catalogue is empty.")
 
+    # Requirement 2: Manual product refinement ALWAYS takes priority over AI identification
     has_user_query = bool(user_query and user_query.strip())
-    clean_query = user_query.strip().lower() if has_user_query else ""
-    query_tokens = clean_query.split() if has_user_query else []
+    clean_user_query = user_query.strip().lower() if has_user_query else ""
+
+    # If no manual user query, use AI identification if available
+    has_ai_label = bool(not has_user_query and ai_identified_label and ai_identified_label.strip())
+    clean_ai_label = ai_identified_label.strip().lower() if has_ai_label else ""
+
+    active_query = clean_user_query if has_user_query else clean_ai_label
+    query_tokens = active_query.split() if active_query else []
+    has_any_query = bool(query_tokens)
 
     scored: list[tuple[ProductItem, float, str]] = []
     for product in all_products:
+        # Reject clearly incompatible product types before scoring.
+        if active_query:
+            requested_type = _product_type(active_query)
+            product_text = " ".join(
+                str(value or "")
+                for value in (
+                    product.title,
+                    product.description,
+                    product.subcategory,
+                )
+            )
+            candidate_type = _product_type(product_text)
+
+            if requested_type and candidate_type != requested_type:
+                continue
+
+                # Prevent incompatible eyewear recommendations.
+        # Only apply this rule when the query explicitly identifies lens type.
+        if active_query and product.category.lower() == "eyewear":
+            query_is_optical = any(
+                phrase in active_query
+                for phrase in (
+                    "clear lens",
+                    "clear lenses",
+                    "optical glasses",
+                    "optical frames",
+                    "prescription glasses",
+                    "eyeglasses",
+                    "computer glasses",
+                )
+            )
+
+            query_is_sunglasses = any(
+                phrase in active_query
+                for phrase in (
+                    "sunglasses",
+                    "sun glasses",
+                    "polarized lenses",
+                    "tinted lenses",
+                )
+            )
+
+            product_is_sunglasses = (
+                product.subcategory.lower() == "sunglasses"
+            )
+
+            product_is_optical = (
+                product.subcategory.lower() == "optical frames"
+            )
+
+            if query_is_optical and product_is_sunglasses:
+                continue
+
+            if query_is_sunglasses and product_is_optical:
+                continue
+
         score_cat = _category_score(detected_category, product.category)
         score_crop, matched_kw = _label_overlap_score(crop_labels, product)
         score_scene, _ = _label_overlap_score(scene_labels, product)
-        score_user = _user_query_score(query_tokens, product) if has_user_query else 0.0
+        score_query = _user_query_score(query_tokens, product) if has_any_query else 0.0
 
         if has_user_query:
-            total = 0.50 * score_user + 0.30 * score_crop + 0.15 * score_cat + 0.05 * score_scene
+            # Preserve the existing manual-refinement behavior.
+            if not crop_labels and not scene_labels:
+                total = 0.80 * score_query + 0.20 * score_cat
+            else:
+                total = 0.55 * score_query + 0.25 * score_crop + 0.15 * score_cat + 0.05 * score_scene
+
+        elif has_ai_label:
+            # Give Gemini's description greater weight when ML Kit
+            # provides no supporting crop or scene labels.
+            if not crop_labels and not scene_labels:
+                total = 0.80 * score_query + 0.20 * score_cat
+            else:
+                total = 0.55 * score_query + 0.25 * score_crop + 0.15 * score_cat + 0.05 * score_scene
         elif crop_labels:
             total = 0.60 * score_crop + 0.25 * score_cat + 0.15 * score_scene
         else:
@@ -114,12 +211,15 @@ def find_best_match(
         clamped = max(0.0, min(total, 1.0))
         explanation = _build_explanation(
             has_user_query=has_user_query,
-            user_query=user_query,
-            score_user=score_user,
+            user_query=user_query if has_user_query else (ai_identified_label if has_ai_label else None),
+            score_user=score_query,
             matched_crop_keywords=matched_kw,
             object_category=detected_category,
             product_category=product.category,
         )
+        if has_ai_label and score_query > 0.3:
+            explanation = f"AI identified as '{ai_identified_label}'. {explanation}"
+
         scored.append((product, clamped, explanation))
 
     if not scored:
@@ -136,6 +236,7 @@ def find_best_match(
             matched=False,
             no_match_reason=f"No reliable match found for this {detected_category}. You can refine the search below.",
             suggested_category=detected_category,
+            identified_as=ai_identified_label if has_ai_label else None,
         )
 
     return MatchResponse(
@@ -147,5 +248,7 @@ def find_best_match(
             evidence_explanation=explanation,
             is_user_refined=has_user_query,
             match_source="backend",
+            identified_as=ai_identified_label if has_ai_label else None,
         ),
+        identified_as=ai_identified_label if has_ai_label else None,
     )

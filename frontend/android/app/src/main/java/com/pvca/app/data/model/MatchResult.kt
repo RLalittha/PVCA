@@ -17,7 +17,8 @@ data class MatchCandidate(
     val score: Float,
     val confidenceTier: MatchConfidenceTier,
     val evidenceExplanation: String,
-    val isUserRefined: Boolean = false
+    val isUserRefined: Boolean = false,
+    val identifiedAs: String? = null
 )
 
 /**
@@ -34,6 +35,7 @@ sealed interface MatchResult {
      */
     data class NoMatch(
         val reason: String,
-        val suggestedCategory: String? = null
+        val suggestedCategory: String? = null,
+        val identifiedAs: String? = null
     ) : MatchResult
 }
